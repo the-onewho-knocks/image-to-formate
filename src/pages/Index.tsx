@@ -31,10 +31,7 @@ const Index = () => {
     if (apiKey.trim()) {
       setApiKey(apiKey.trim());
       setShowApiKey(false);
-      toast({
-        title: "API Key Saved",
-        description: "Your Gemini API key has been saved locally.",
-      });
+      toast({ title: "API Key Saved" });
     }
   };
 
@@ -43,15 +40,9 @@ const Index = () => {
     if (file) {
       setSelectedImage(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+      reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
     }
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
   };
 
   const handleDrop = (e: React.DragEvent) => {
@@ -60,37 +51,16 @@ const Index = () => {
     if (file && file.type.startsWith("image/")) {
       setSelectedImage(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
+      reader.onloadend = () => setImagePreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
   const handleFormat = async () => {
-    if (!selectedImage) {
+    if (!selectedImage || !template.trim() || !getApiKey()) {
       toast({
-        title: "No image selected",
-        description: "Please upload an image first.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!template.trim()) {
-      toast({
-        title: "No template provided",
-        description: "Please enter a template or formatting instructions.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!getApiKey()) {
-      setShowApiKey(true);
-      toast({
-        title: "API Key Required",
-        description: "Please enter your Gemini API key first.",
+        title: "Missing input",
+        description: "Please provide template, image, and API key.",
         variant: "destructive",
       });
       return;
@@ -100,14 +70,10 @@ const Index = () => {
     try {
       const result = await extractAndFormatText(imagePreview, template);
       setFormattedText(result);
-      toast({
-        title: "Success!",
-        description: "Text extracted and formatted successfully.",
-      });
     } catch (error) {
       toast({
         title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process image",
+        description: error instanceof Error ? error.message : "Failed to process",
         variant: "destructive",
       });
     } finally {
@@ -118,96 +84,68 @@ const Index = () => {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(formattedText);
     setCopied(true);
-    toast({
-      title: "Copied!",
-      description: "Formatted text copied to clipboard.",
-    });
     setTimeout(() => setCopied(false), 2000);
   };
 
   return (
-    <div className="min-h-screen py-12 px-4">
-      <div className="container max-w-6xl mx-auto space-y-12">
-        {/* Hero Section */}
-        <div className="text-center space-y-4 animate-fade-in">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 mb-4">
-            <Sparkles className="w-4 h-4 text-primary" />
-            <span className="text-sm text-primary-foreground">AI-Powered Text Formatter</span>
-          </div>
-          <h1 className="text-5xl md:text-6xl font-bold gradient-text">
-            Image to Formatted Text
-          </h1>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Upload an image, provide a template, and get perfectly formatted text using Gemini AI
-          </p>
-        </div>
-
-        {/* API Key Section */}
-        {showApiKey && (
-          <Card className="p-6 bg-card/50 backdrop-blur border-border max-w-xl mx-auto">
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Key className="w-5 h-5 text-primary" />
-                <h3 className="font-semibold">Gemini API Key</h3>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Enter your Gemini API key to enable text extraction. Get one free at{" "}
-                <a 
-                  href="https://aistudio.google.com/apikey" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-primary underline"
-                >
-                  Google AI Studio
-                </a>
-              </p>
-              <div className="flex gap-2">
+    <div className="min-h-screen py-8 px-4">
+      <div className="container max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <h1 className="text-3xl font-bold">Image to Formatted Text</h1>
+          <div className="flex items-center justify-center gap-2">
+            {showApiKey ? (
+              <div className="flex gap-2 items-center">
                 <Input
                   type="password"
-                  placeholder="Enter your Gemini API key"
+                  placeholder="Gemini API Key"
                   value={apiKey}
                   onChange={(e) => setApiKeyState(e.target.value)}
-                  className="bg-background/50"
+                  className="w-64"
                 />
-                <Button onClick={handleSaveApiKey}>Save</Button>
+                <Button size="sm" onClick={handleSaveApiKey}>Save</Button>
               </div>
-            </div>
-          </Card>
-        )}
-
-        {/* Settings Toggle */}
-        {!showApiKey && (
-          <div className="flex justify-center">
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={() => setShowApiKey(true)}
-              className="text-muted-foreground"
-            >
-              <Settings className="w-4 h-4 mr-2" />
-              Change API Key
-            </Button>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => setShowApiKey(true)}>
+                <Settings className="w-4 h-4 mr-1" /> API Key
+              </Button>
+            )}
           </div>
-        )}
+        </div>
 
-        {/* Main Content */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Upload Section */}
-          <Card className="p-6 space-y-6 bg-card/50 backdrop-blur border-border glow-card hover-scale">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold flex items-center gap-2">
-                <Upload className="w-6 h-6 text-primary" />
-                Upload Image
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Drag and drop or click to select an image with text
-              </p>
-            </div>
+        {/* 3 Column Layout */}
+        <div className="grid md:grid-cols-3 gap-4">
+          {/* 1. Template */}
+          <Card className="p-4 space-y-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <FileText className="w-5 h-5 text-primary" />
+              1. Template
+            </h2>
+            <Textarea
+              placeholder={`Enter your template format, e.g.:
+Name: [name]
+Email: [email]
+Phone: [phone]
 
+Or instructions like:
+"Convert to bullet points"
+"Format as JSON"`}
+              value={template}
+              onChange={(e) => setTemplate(e.target.value)}
+              className="min-h-[300px] text-sm"
+            />
+          </Card>
+
+          {/* 2. Image */}
+          <Card className="p-4 space-y-3">
+            <h2 className="font-semibold flex items-center gap-2">
+              <Upload className="w-5 h-5 text-primary" />
+              2. Image
+            </h2>
             <div
-              onDragOver={handleDragOver}
+              onDragOver={(e) => e.preventDefault()}
               onDrop={handleDrop}
-              className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
+              className="border-2 border-dashed border-border rounded-lg p-4 text-center hover:border-primary/50 transition-colors cursor-pointer min-h-[300px] flex items-center justify-center"
             >
               <input
                 type="file"
@@ -216,145 +154,56 @@ const Index = () => {
                 className="hidden"
                 id="image-upload"
               />
-              <label htmlFor="image-upload" className="cursor-pointer space-y-4 block">
+              <label htmlFor="image-upload" className="cursor-pointer w-full">
                 {imagePreview ? (
-                  <div className="space-y-4">
-                    <img
-                      src={imagePreview}
-                      alt="Preview"
-                      className="max-h-64 mx-auto rounded-lg object-contain"
-                    />
-                    <p className="text-sm text-muted-foreground">
-                      {selectedImage?.name}
-                    </p>
-                  </div>
+                  <img src={imagePreview} alt="Preview" className="max-h-[280px] mx-auto rounded object-contain" />
                 ) : (
-                  <>
-                    <div className="w-16 h-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-                      <FileText className="w-8 h-8 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-foreground font-medium">
-                        Click to upload or drag and drop
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        PNG, JPG, or WEBP
-                      </p>
-                    </div>
-                  </>
+                  <div className="text-muted-foreground">
+                    <Upload className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                    <p>Drop image or click to upload</p>
+                  </div>
                 )}
               </label>
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Template / Format Instructions</label>
-              <Textarea
-                placeholder={`Example templates:
-• "Name: [name]\nEmail: [email]\nPhone: [phone]"
-• "Convert to bullet points"
-• "Format as a professional email"
-• "Extract only dates and times"
-• "Create a JSON object with the data"`}
-                value={template}
-                onChange={(e) => setTemplate(e.target.value)}
-                className="min-h-32 bg-background/50"
-              />
-            </div>
-
-            <Button
-              onClick={handleFormat}
-              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
-              size="lg"
-              disabled={isProcessing}
-            >
-              {isProcessing ? (
-                <>
-                  <div className="w-5 h-5 mr-2 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5 mr-2" />
-                  Extract & Format
-                </>
-              )}
-            </Button>
           </Card>
 
-          {/* Results Section */}
-          <Card className="p-6 space-y-6 bg-card/50 backdrop-blur border-border glow-card">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-semibold flex items-center gap-2">
-                <FileText className="w-6 h-6 text-secondary" />
-                Formatted Result
+          {/* 3. Result */}
+          <Card className="p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <h2 className="font-semibold flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
+                3. Formatted Result
               </h2>
-              <p className="text-sm text-muted-foreground">
-                Your formatted text will appear here
-              </p>
-            </div>
-
-            <div className="relative">
-              <Textarea
-                value={formattedText}
-                onChange={(e) => setFormattedText(e.target.value)}
-                placeholder="Formatted text will appear here after processing..."
-                className="min-h-[400px] bg-background/50 font-mono text-sm"
-              />
               {formattedText && (
-                <Button
-                  onClick={copyToClipboard}
-                  size="sm"
-                  variant="secondary"
-                  className="absolute top-2 right-2"
-                >
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4 mr-1" />
-                      Copied
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4 mr-1" />
-                      Copy
-                    </>
-                  )}
+                <Button size="sm" variant="ghost" onClick={copyToClipboard}>
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
               )}
             </div>
+            <Textarea
+              value={formattedText}
+              onChange={(e) => setFormattedText(e.target.value)}
+              placeholder="Result will appear here..."
+              className="min-h-[300px] font-mono text-sm"
+            />
           </Card>
         </div>
 
-        {/* Features */}
-        <div className="grid md:grid-cols-3 gap-6 pt-8">
-          <Card className="p-6 text-center space-y-3 bg-card/30 backdrop-blur border-border hover-scale">
-            <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-primary" />
-            </div>
-            <h3 className="font-semibold">Gemini AI OCR</h3>
-            <p className="text-sm text-muted-foreground">
-              Powerful text extraction from any image using Google's Gemini
-            </p>
-          </Card>
-
-          <Card className="p-6 text-center space-y-3 bg-card/30 backdrop-blur border-border hover-scale">
-            <div className="w-12 h-12 mx-auto rounded-full bg-secondary/10 flex items-center justify-center">
-              <FileText className="w-6 h-6 text-secondary" />
-            </div>
-            <h3 className="font-semibold">Template Formatting</h3>
-            <p className="text-sm text-muted-foreground">
-              Define your own templates to format extracted text exactly how you need
-            </p>
-          </Card>
-
-          <Card className="p-6 text-center space-y-3 bg-card/30 backdrop-blur border-border hover-scale">
-            <div className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center">
-              <Copy className="w-6 h-6 text-accent" />
-            </div>
-            <h3 className="font-semibold">100% Local</h3>
-            <p className="text-sm text-muted-foreground">
-              Your API key stays in your browser - no server required
-            </p>
-          </Card>
+        {/* Process Button */}
+        <div className="flex justify-center">
+          <Button onClick={handleFormat} size="lg" disabled={isProcessing} className="px-8">
+            {isProcessing ? (
+              <>
+                <div className="w-4 h-4 mr-2 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                Processing...
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-4 h-4 mr-2" />
+                Extract & Format
+              </>
+            )}
+          </Button>
         </div>
       </div>
     </div>
