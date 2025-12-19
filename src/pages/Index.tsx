@@ -1,11 +1,9 @@
-import { useState, useEffect } from "react";
-import { Upload, FileText, Sparkles, Copy, Check, Key, Settings } from "lucide-react";
+import { useState } from "react";
+import { Upload, FileText, Sparkles, Copy, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { extractAndFormatText, getApiKey, setApiKey } from "@/services/geminiService";
 
 const Index = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -14,26 +12,7 @@ const Index = () => {
   const [formattedText, setFormattedText] = useState("");
   const [copied, setCopied] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [apiKey, setApiKeyState] = useState("");
-  const [showApiKey, setShowApiKey] = useState(false);
   const { toast } = useToast();
-
-  useEffect(() => {
-    const savedKey = getApiKey();
-    if (savedKey) {
-      setApiKeyState(savedKey);
-    } else {
-      setShowApiKey(true);
-    }
-  }, []);
-
-  const handleSaveApiKey = () => {
-    if (apiKey.trim()) {
-      setApiKey(apiKey.trim());
-      setShowApiKey(false);
-      toast({ title: "API Key Saved" });
-    }
-  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -57,28 +36,21 @@ const Index = () => {
   };
 
   const handleFormat = async () => {
-    if (!selectedImage || !template.trim() || !getApiKey()) {
+    if (!selectedImage || !template.trim()) {
       toast({
         title: "Missing input",
-        description: "Please provide template, image, and API key.",
+        description: "Please provide both template and image.",
         variant: "destructive",
       });
       return;
     }
 
     setIsProcessing(true);
-    try {
-      const result = await extractAndFormatText(imagePreview, template);
-      setFormattedText(result);
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: error instanceof Error ? error.message : "Failed to process",
-        variant: "destructive",
-      });
-    } finally {
+    // TODO: Add your text extraction logic here
+    setTimeout(() => {
+      setFormattedText("Text extraction not yet implemented");
       setIsProcessing(false);
-    }
+    }, 1000);
   };
 
   const copyToClipboard = () => {
@@ -91,26 +63,8 @@ const Index = () => {
     <div className="min-h-screen py-8 px-4">
       <div className="container max-w-7xl mx-auto space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center">
           <h1 className="text-3xl font-bold">Image to Formatted Text</h1>
-          <div className="flex items-center justify-center gap-2">
-            {showApiKey ? (
-              <div className="flex gap-2 items-center">
-                <Input
-                  type="password"
-                  placeholder="Gemini API Key"
-                  value={apiKey}
-                  onChange={(e) => setApiKeyState(e.target.value)}
-                  className="w-64"
-                />
-                <Button size="sm" onClick={handleSaveApiKey}>Save</Button>
-              </div>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => setShowApiKey(true)}>
-                <Settings className="w-4 h-4 mr-1" /> API Key
-              </Button>
-            )}
-          </div>
         </div>
 
         {/* 3 Column Layout */}
