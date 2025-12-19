@@ -1,17 +1,42 @@
-import { useState } from "react";
-import { Upload, FileText, Sparkles, Copy, Check } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Upload, FileText, Sparkles, Copy, Check, Key, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { extractAndFormatText, getApiKey, setApiKey } from "@/services/geminiService";
 
 const Index = () => {
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
-  const [formatInstructions, setFormatInstructions] = useState("");
+  const [template, setTemplate] = useState("");
   const [formattedText, setFormattedText] = useState("");
   const [copied, setCopied] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [apiKey, setApiKeyState] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const savedKey = getApiKey();
+    if (savedKey) {
+      setApiKeyState(savedKey);
+    } else {
+      setShowApiKey(true);
+    }
+  }, []);
+
+  const handleSaveApiKey = () => {
+    if (apiKey.trim()) {
+      setApiKey(apiKey.trim());
+      setShowApiKey(false);
+      toast({
+        title: "API Key Saved",
+        description: "Your Gemini API key has been saved locally.",
+      });
+    }
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,7 +67,7 @@ const Index = () => {
     }
   };
 
-  const handleFormat = () => {
+  const handleFormat = async () => {
     if (!selectedImage) {
       toast({
         title: "No image selected",
@@ -51,14 +76,43 @@ const Index = () => {
       });
       return;
     }
-    
-    // Placeholder for actual OCR implementation
-    toast({
-      title: "Processing...",
-      description: "Text extraction and formatting would happen here with backend integration.",
-    });
-    
-    setFormattedText("This is where your formatted text will appear after backend integration.");
+
+    if (!template.trim()) {
+      toast({
+        title: "No template provided",
+        description: "Please enter a template or formatting instructions.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!getApiKey()) {
+      setShowApiKey(true);
+      toast({
+        title: "API Key Required",
+        description: "Please enter your Gemini API key first.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const result = await extractAndFormatText(imagePreview, template);
+      setFormattedText(result);
+      toast({
+        title: "Success!",
+        description: "Text extracted and formatted successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to process image",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const copyToClipboard = () => {
@@ -84,9 +138,57 @@ const Index = () => {
             Image to Formatted Text
           </h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            Upload any image with text, specify your desired format, and get perfectly formatted text instantly
+            Upload an image, provide a template, and get perfectly formatted text using Gemini AI
           </p>
         </div>
+
+        {/* API Key Section */}
+        {showApiKey && (
+          <Card className="p-6 bg-card/50 backdrop-blur border-border max-w-xl mx-auto">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Key className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold">Gemini API Key</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Enter your Gemini API key to enable text extraction. Get one free at{" "}
+                <a 
+                  href="https://aistudio.google.com/apikey" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline"
+                >
+                  Google AI Studio
+                </a>
+              </p>
+              <div className="flex gap-2">
+                <Input
+                  type="password"
+                  placeholder="Enter your Gemini API key"
+                  value={apiKey}
+                  onChange={(e) => setApiKeyState(e.target.value)}
+                  className="bg-background/50"
+                />
+                <Button onClick={handleSaveApiKey}>Save</Button>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Settings Toggle */}
+        {!showApiKey && (
+          <div className="flex justify-center">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowApiKey(true)}
+              className="text-muted-foreground"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              Change API Key
+            </Button>
+          </div>
+        )}
 
         {/* Main Content */}
         <div className="grid md:grid-cols-2 gap-6">
@@ -98,7 +200,7 @@ const Index = () => {
                 Upload Image
               </h2>
               <p className="text-sm text-muted-foreground">
-                Drag and drop or click to select an image
+                Drag and drop or click to select an image with text
               </p>
             </div>
 
@@ -145,11 +247,16 @@ const Index = () => {
             </div>
 
             <div className="space-y-2">
-              <label className="text-sm font-medium">Format Instructions</label>
+              <label className="text-sm font-medium">Template / Format Instructions</label>
               <Textarea
-                placeholder="E.g., 'Convert to bullet points', 'Format as professional email', 'Extract only phone numbers', etc."
-                value={formatInstructions}
-                onChange={(e) => setFormatInstructions(e.target.value)}
+                placeholder={`Example templates:
+• "Name: [name]\nEmail: [email]\nPhone: [phone]"
+• "Convert to bullet points"
+• "Format as a professional email"
+• "Extract only dates and times"
+• "Create a JSON object with the data"`}
+                value={template}
+                onChange={(e) => setTemplate(e.target.value)}
                 className="min-h-32 bg-background/50"
               />
             </div>
@@ -158,9 +265,19 @@ const Index = () => {
               onClick={handleFormat}
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
               size="lg"
+              disabled={isProcessing}
             >
-              <Sparkles className="w-5 h-5 mr-2" />
-              Format Text
+              {isProcessing ? (
+                <>
+                  <div className="w-5 h-5 mr-2 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5 mr-2" />
+                  Extract & Format
+                </>
+              )}
             </Button>
           </Card>
 
@@ -213,9 +330,9 @@ const Index = () => {
             <div className="w-12 h-12 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-primary" />
             </div>
-            <h3 className="font-semibold">AI-Powered</h3>
+            <h3 className="font-semibold">Gemini AI OCR</h3>
             <p className="text-sm text-muted-foreground">
-              Advanced AI technology for accurate text extraction
+              Powerful text extraction from any image using Google's Gemini
             </p>
           </Card>
 
@@ -223,9 +340,9 @@ const Index = () => {
             <div className="w-12 h-12 mx-auto rounded-full bg-secondary/10 flex items-center justify-center">
               <FileText className="w-6 h-6 text-secondary" />
             </div>
-            <h3 className="font-semibold">Custom Formatting</h3>
+            <h3 className="font-semibold">Template Formatting</h3>
             <p className="text-sm text-muted-foreground">
-              Specify exactly how you want your text formatted
+              Define your own templates to format extracted text exactly how you need
             </p>
           </Card>
 
@@ -233,9 +350,9 @@ const Index = () => {
             <div className="w-12 h-12 mx-auto rounded-full bg-accent/10 flex items-center justify-center">
               <Copy className="w-6 h-6 text-accent" />
             </div>
-            <h3 className="font-semibold">Easy Copy</h3>
+            <h3 className="font-semibold">100% Local</h3>
             <p className="text-sm text-muted-foreground">
-              One-click copy to use your formatted text anywhere
+              Your API key stays in your browser - no server required
             </p>
           </Card>
         </div>
